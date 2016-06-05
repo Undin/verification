@@ -1,0 +1,161 @@
+#define SIZE 8
+
+typedef Node {
+	int x;
+	int y;
+	int left;
+	int right;
+};
+
+typedef StackRecord {
+	int index;
+	bool goLeft;
+};
+
+//Node node;
+
+Node treap[SIZE];
+
+StackRecord stack[SIZE];
+
+inline split(nodeIndex, key, outLeftIndex, outRightIndex) {
+	printf("split. index: %d, key: %d\n", nodeIndex, key);
+	int curIndex = nodeIndex;
+	int sp = 0;
+	int t1, t2;
+
+	do
+	::
+		printf("curIndex: %d\n", curIndex);
+		if
+		:: curIndex == -1 -> 
+			t1 = -1; 
+			t2 = -1;
+			break;
+		:: curIndex != -1 && treap[curIndex].x < key ->
+			stack[sp].index = curIndex;
+			stack[sp].goLeft = false;
+			curIndex = treap[curIndex].right;
+			sp++;
+		:: else -> 
+			stack[sp].index = curIndex;
+			stack[sp].goLeft = true;
+			curIndex = treap[curIndex].left;
+			sp++;
+		fi;
+	od;
+
+
+	printf("sp: %d\n", sp);
+	do
+	:: sp > 0 -> 
+		sp--;
+		int index = stack[sp].index;
+		bool goLeft = stack[sp].goLeft;
+		printf("split. index: %d, go left: %d\n", index, goLeft);
+		if
+			:: goLeft ->
+				treap[index].left = t2;
+				t2 = index;
+			:: else -> 
+				treap[index].right = t1;
+				t1 = index;
+		fi;
+	:: sp == 0 -> 
+		outLeftIndex = t1;
+		outRightIndex = t2;
+		printf("split result. outLeftIndex: %d, outRightIndex: %d\n", outLeftIndex, outRightIndex);
+		break;
+	:: else -> skip;
+	od;
+}
+
+inline merge(leftIndex, rightIndex, outIndex) {
+	printf("merge: leftIndex: %d, rightIndex: %d\n", leftIndex, rightIndex);
+	int sp = 0;
+	int curLeftIndex = leftIndex;
+	int curRightIndex = rightIndex;
+	int resIndex;
+
+	do
+	::
+		printf("curLeftIndex: %d, curRightIndex: %d\n", curLeftIndex, curRightIndex);
+		if
+		:: curLeftIndex == -1 -> 
+			resIndex = curRightIndex;
+			break;
+		:: curRightIndex == -1 -> 
+			resIndex = curLeftIndex;
+			break;
+		:: treap[curLeftIndex].y > treap[curRightIndex].y -> 
+			stack[sp].index = curLeftIndex;
+			stack[sp].goLeft = false;
+			curLeftIndex = treap[curLeftIndex].right;
+			sp++;
+		:: else ->
+			stack[sp].index = curRightIndex;
+			stack[sp].goLeft = true;
+			curRightIndex = treap[curRightIndex].left
+			sp++;
+		fi;
+	od;
+
+	printf("sp: %d\n", sp);
+	do
+	:: sp == 0 ->
+		outIndex = resIndex;
+		printf("merge result: outIndex: %d\n", outIndex);
+		break;
+	:: else -> 
+		sp--;
+		int index = stack[sp].index;
+		bool goLeft = stack[sp].goLeft;
+		printf("merge. index: %d, go left: %d\n", index, goLeft);
+		if
+		:: goLeft -> treap[index].left = resIndex;
+		:: else -> treap[index].right = resIndex;
+		fi;
+		resIndex = index;
+	od;
+}
+
+
+inline printTreap() {
+	int i = 0;
+	do
+	:: i == SIZE -> break;
+	:: else ->
+		printf("%d. x: %d, y: %d, left: %d, right: %d\n", i, treap[i].x, treap[i].y, treap[i].left, treap[i].right);
+		i++;
+	od;
+}
+
+proctype main() {
+	int left;
+	int right;
+	split(0, 3, left, right);
+	printf("left: %d, right: %d\n", left, right);
+	int root;
+	merge(left, right, root);
+	printf("root: %d\n", root);
+	assert (false);
+}
+
+init {
+	treap[0].x = 2;
+	treap[0].y = 3;
+	treap[0].left = 1;
+	treap[0].right = 2;
+	treap[1].x = 1;
+	treap[1].y = 2;
+	treap[1].left = -1;
+	treap[1].right = -1;
+	treap[2].x = 3;
+	treap[2].y = 1;
+	treap[2].left = -1;
+	treap[2].right = -1;
+
+	run main()
+}
+
+// ltl f { [] (node.left == 0) }
