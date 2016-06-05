@@ -32,6 +32,8 @@ bool is_tree = true;
 QueueRecord heightQueue[SIZE];
 int height = 0;
 
+bool inserting = false;
+bool removing = false;
 
 inline isHeap() {
 	is_heap = true;
@@ -277,6 +279,7 @@ inline freePlace(out) {
 }
 
 inline insert(key, random) {
+	inserting = true;
 	bool hasKey;
 	find(key, hasKey);
 	if
@@ -303,9 +306,11 @@ inline insert(key, random) {
 	isHeap();
 	isTree();
 	computeHeight();
+	inserting = false;
 }
 
 inline remove(key) {
+	removing = true;
 	int l, m, r;
 	split(root, key, l, r);
 	split(r, key + 1, m, r);
@@ -319,6 +324,7 @@ inline remove(key) {
 	isHeap();
 	isTree();
 	computeHeight();
+	removing = false;
 }
 
 proctype main() {
@@ -346,6 +352,13 @@ init {
 	run main()
 }
 
+// Декартово дерево всегда является бинарной кучей по y
 ltl heap_invariant { [] (is_heap) }
+// Декартово дерево всегда является бинарным деревом поиска по x
 ltl tree_invariant { [] (is_tree) }
+// Операция вставки конечна
+ltl finite_insert { [] (inserting -> (<> (!inserting))) }
+// Операция удаления конечна
+ltl finite_remove { [] (removing -> (<> (!removing))) }
+// Высота дерева всегда не больше 4
 ltl max_height { [] (height <= 4) }
