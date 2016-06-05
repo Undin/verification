@@ -1,4 +1,4 @@
-#define SIZE 8
+#define SIZE 7
 
 typedef Node {
 	int x;
@@ -7,16 +7,138 @@ typedef Node {
 	int right;
 };
 
-typedef StackRecord {
+typedef Record {
 	int index;
 	bool goLeft;
 };
 
-//Node node;
+typedef QueueRecord {
+	int index;
+	int depth;
+};
 
 Node treap[SIZE];
+bool uses[SIZE];
+int root = -1;
+int size = 0;
 
-StackRecord stack[SIZE];
+Record stack[SIZE];
+
+bool is_heap = true;
+
+Record isTreeQueue[SIZE];
+bool is_tree = true;
+
+QueueRecord heightQueue[SIZE];
+int height = 0;
+
+
+inline isHeap() {
+	is_heap = true;
+	int index;
+	do
+	:: index == SIZE -> break;
+	:: index != SIZE && !uses[index] -> index++;
+	:: else -> 
+		is_heap = is_heap &&
+		(treap[index].left == -1 || treap[index].left != -1 && treap[index].y >= treap[treap[index].left].y) &&
+		(treap[index].right == -1 || treap[index].right != -1 && treap[index].y >= treap[treap[index].right].y);
+		index++;
+	od;
+}
+
+inline isTree() {
+	is_tree = true;
+	int index;
+	do
+	:: index == SIZE -> break;
+	:: index != SIZE && !uses[index] -> index++;
+	:: else ->
+		int queueSize = 0;
+		if
+		:: treap[index].left != -1 ->
+			isTreeQueue[queueSize].index = treap[index].left;
+			isTreeQueue[queueSize].goLeft = true;
+			queueSize++;
+		:: else -> skip;
+		fi;
+		if
+		:: treap[index].right != -1 ->
+			isTreeQueue[queueSize].index = treap[index].right;
+			isTreeQueue[queueSize].goLeft = false;
+			queueSize++;
+		:: else -> skip;
+		fi;
+		
+		int queueIndex = 0;
+		do
+		:: queueIndex == queueSize -> break;
+		:: else ->
+			int i = isTreeQueue[queueIndex].index;
+			bool goLeft = isTreeQueue[queueIndex].goLeft;
+			if
+			:: goLeft -> is_tree = is_tree && treap[i].x < treap[index].x;
+			:: else -> is_tree = is_tree && treap[i].x > treap[index].x;
+			fi;
+			if
+			:: treap[i].left != -1 ->
+				isTreeQueue[queueSize].index = treap[i].left;
+				isTreeQueue[queueSize].goLeft = goLeft;
+				queueSize++;
+			:: else -> skip;
+			fi;
+			if
+			:: treap[i].right != -1 ->
+				isTreeQueue[queueSize].index = treap[i].right;
+				isTreeQueue[queueSize].goLeft = goLeft;
+				queueSize++;
+			:: else -> skip;
+			fi;
+			queueIndex++;
+		od;
+		index++;
+	od;
+}
+
+inline computeHeight() {
+	if
+	:: root == -1 -> height = 0;
+	:: else ->
+		heightQueue[0].index = root;
+		heightQueue[0].depth = 1;
+		int queueSize = 1;
+		int h = 0;
+		int queueIndex = 0;
+		do
+		:: queueIndex == queueSize ->
+			height = h;
+			break;
+		:: else -> 
+			int index = heightQueue[queueIndex].index;
+			int depth = heightQueue[queueIndex].index;
+			if
+			:: depth > h -> h = depth;
+			:: else -> skip;
+			fi;
+			if
+			:: treap[index].left != -1
+				heightQueue[queueSize].index = treap[index].left
+				heightQueue[queueSize].depth = depth + 1;
+				queueSize++;
+			:: else -> skip;
+			fi;
+			if
+			:: treap[index].right != -1
+				heightQueue[queueSize].index = treap[index].right
+				heightQueue[queueSize].depth = depth + 1;
+				queueSize++;
+			:: else -> skip;
+			fi;
+			queueIndex++;
+		od;
+	fi;
+}
+
 
 inline split(nodeIndex, key, outLeftIndex, outRightIndex) {
 	printf("split. index: %d, key: %d\n", nodeIndex, key);
@@ -81,13 +203,16 @@ inline merge(leftIndex, rightIndex, outIndex) {
 	::
 		printf("curLeftIndex: %d, curRightIndex: %d\n", curLeftIndex, curRightIndex);
 		if
-		:: curLeftIndex == -1 -> 
+		:: curLeftIndex == -1 && curRightIndex == -1 ->
+			resIndex = -1;
+			break;
+		:: curLeftIndex == -1 && curRightIndex != -1 -> 
 			resIndex = curRightIndex;
 			break;
-		:: curRightIndex == -1 -> 
+		:: curLeftIndex != -1 && curRightIndex == -1 -> 
 			resIndex = curLeftIndex;
 			break;
-		:: treap[curLeftIndex].y > treap[curRightIndex].y -> 
+		:: curLeftIndex != -1 && curRightIndex != -1 && treap[curLeftIndex].y > treap[curRightIndex].y -> 
 			stack[sp].index = curLeftIndex;
 			stack[sp].goLeft = false;
 			curLeftIndex = treap[curLeftIndex].right;
@@ -119,43 +244,108 @@ inline merge(leftIndex, rightIndex, outIndex) {
 	od;
 }
 
-
-inline printTreap() {
-	int i = 0;
+inline find(key, result) {
+	int index = root;
 	do
-	:: i == SIZE -> break;
+	:: index == -1 -> 
+		result = false;
+		break;
+	:: index != -1 && treap[index].x == key ->
+		result = true;
+		break;
+	:: index != -1 && treap[index].x > key ->
+		index = treap[index].left;
 	:: else ->
-		printf("%d. x: %d, y: %d, left: %d, right: %d\n", i, treap[i].x, treap[i].y, treap[i].left, treap[i].right);
-		i++;
+		index = treap[index].right;
 	od;
 }
 
+inline freePlace(out) {
+	int i = 0;
+	do
+	:: i == SIZE ->
+		out = -1;
+		break;
+	:: else -> 
+		if
+		:: !uses[i] ->
+			out = i;
+			break;
+		:: else -> i++
+		fi;
+	od;
+}
+
+inline insert(key, random) {
+	bool hasKey;
+	find(key, hasKey);
+	if
+	:: !hasKey -> 
+		int newNodeIndex;
+		freePlace(newNodeIndex);
+		if
+		:: newNodeIndex == -1 -> skip;
+		:: else ->
+			uses[newNodeIndex] = true; 
+			size++;
+			treap[newNodeIndex].x = key;
+			treap[newNodeIndex].y = random;
+			treap[newNodeIndex].left = -1;
+			treap[newNodeIndex].right = -1;
+
+			int l, r;
+			split(root, key, l, r);
+			merge(l, newNodeIndex, root);
+			merge(root, r, root);
+		fi;
+	:: else -> skip;
+	fi;
+	isHeap();
+	isTree();
+	computeHeight();
+}
+
+inline remove(key) {
+	int l, m, r;
+	split(root, key, l, r);
+	split(r, key + 1, m, r);
+	if
+	:: m != -1 -> 
+		uses[m] = false;
+		size++;
+	:: else -> skip;
+	fi;
+	merge(l, r, root);
+	isHeap();
+	isTree();
+	computeHeight();
+}
+
 proctype main() {
-	int left;
-	int right;
-	split(0, 3, left, right);
-	printf("left: %d, right: %d\n", left, right);
-	int root;
-	merge(left, right, root);
-	printf("root: %d\n", root);
-	assert (false);
+	printf("start\n");
+	int value;
+	int a;
+	do
+	:: size < SIZE ->
+		select(value: 0..10);
+		select(a: 0..10);
+		printf("insert %d\n", value);
+		insert(value, a);
+	:: else -> break;
+	od;
+	do
+	:: size > 0 ->
+		select(value: 0..10);
+		printf("remove %d\n", value);
+		remove(value);
+	:: else -> break;
+	od;
 }
 
 init {
-	treap[0].x = 2;
-	treap[0].y = 3;
-	treap[0].left = 1;
-	treap[0].right = 2;
-	treap[1].x = 1;
-	treap[1].y = 2;
-	treap[1].left = -1;
-	treap[1].right = -1;
-	treap[2].x = 3;
-	treap[2].y = 1;
-	treap[2].left = -1;
-	treap[2].right = -1;
-
 	run main()
 }
 
-// ltl f { [] (node.left == 0) }
+ltl heap_invariant { [] (is_heap) }
+ltl tree_invariant { [] (is_tree) }
+ltl max_height { [] (height <= 4) }
